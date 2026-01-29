@@ -1,7 +1,15 @@
 import { qdrant } from "../infra/qdrant";
 import { embed } from "../infra/embeddings";
 
-export async function recallMemories(userId: string, query: string) {
+export type RecalledMemory = {
+  text: string;
+  score: number;
+};
+
+export async function recallMemories(
+  userId: string,
+  query: string,
+): Promise<RecalledMemory[]> {
   const vector = await embed(query);
 
   const res = await qdrant.search("memory", {
@@ -18,5 +26,10 @@ export async function recallMemories(userId: string, query: string) {
     },
   });
 
-  return res.map((r) => ({ text: r.payload?.text, score: r.score }));
+  return res
+    .map((r) => ({
+      text: String(r.payload?.text ?? ""),
+      score: r.score ?? 0,
+    }))
+    .filter((m) => m.text.length > 0);
 }
