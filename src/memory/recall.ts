@@ -1,7 +1,12 @@
 import { qdrant } from "../infra/qdrant";
+import { embed } from "../infra/embeddings";
 
-export async function recallMemories(userId: string) {
-  const res = await qdrant.scroll("memory", {
+export async function recallMemories(userId: string, query: string) {
+  const vector = await embed(query);
+
+  const res = await qdrant.search("memory", {
+    vector,
+    limit: 5,
     filter: {
       must: [
         {
@@ -10,8 +15,7 @@ export async function recallMemories(userId: string) {
         },
       ],
     },
-    limit: 5,
   });
 
-  return res.points.map((p) => p.payload?.text);
+  return res.map((r) => r.payload?.text);
 }

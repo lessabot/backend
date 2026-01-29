@@ -15,18 +15,18 @@ export async function handleIncomingMessage(msg: any) {
   await saveProfile(userId, memory.profile);
   await saveMemories(userId, [...memory.preferences, ...memory.facts]);
 
-  const pastMemories = await recallMemories(userId);
+  const pastMemories = await recallMemories(userId, text);
 
   const prompt = `
 ${SYSTEM_PROMPT}
 
-Memórias conhecidas do usuário:
-${pastMemories.join("\n") || "Nenhuma ainda."}
+Memórias relevantes do usuário:
+${pastMemories.length ? pastMemories.join("\n") : "Nenhuma relevante."}
 
 Mensagem atual:
 "${text}"
 
-Responda de forma personalizada:
+Responda de forma personalizada, usando as memórias se fizer sentido.
 `;
 
   const reply = await runLLM(prompt);
