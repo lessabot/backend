@@ -1,19 +1,17 @@
-export type UserProfile = {
-  userId: string;
-  traits: Record<string, unknown>;
-  updatedAt: Date;
-};
+import { db } from "../infra/postgres";
 
-class ProfileStore {
-  private readonly byUserId = new Map<string, UserProfile>();
+export async function saveProfile(userId: string, profile: any) {
+  for (const [key, value] of Object.entries(profile)) {
+    if (!value) continue;
 
-  get(userId: string) {
-    return this.byUserId.get(userId) ?? null;
-  }
-
-  upsert(profile: UserProfile) {
-    this.byUserId.set(profile.userId, profile);
+    await db.query(
+      `
+      INSERT INTO user_profile (user_id, key, value)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id, key)
+      DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+      `,
+      [userId, key, String(value)],
+    );
   }
 }
-
-export const profileStore = new ProfileStore();

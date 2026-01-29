@@ -1,35 +1,32 @@
-import { runLLM } from "../agents/llm.agent";
-import { classifyIntent } from "../agents/router.agent";
+import { extractMemory } from "../agents/memory.extractor";
+import { saveProfile } from "../memory/profile.store";
+import { saveMemories } from "../memory/vector.store";
+import { recallMemories } from "../memory/recall";
 import { SYSTEM_PROMPT } from "../agents/system.prompt";
+import { runLLM } from "../agents/llm.agent";
 import { sendTelegramMessage } from "./send";
 
-const processedUpdates = new Set<number>();
-
 export async function handleIncomingMessage(msg: any) {
-  const updateId = msg.update_id;
-
-  if (processedUpdates.has(updateId)) return;
-
-  processedUpdates.add(updateId);
-  setTimeout(() => processedUpdates.delete(updateId), 60_000);
-
   const userId = String(msg.from.id);
   const text = msg.text ?? "";
 
-  const intent = classifyIntent(text);
+  const memory = await extractMemory(text);
+
+  await saveProfile(userId, memory.profile);
+  await saveMemories(userId, [...memory.preferences, ...memory.facts]);
+
+  const pastMemories = await recallMemories(userId);
 
   const prompt = `
 ${SYSTEM_PROMPT}
 
-Usuário:
-- ID: ${userId}
+Memórias conhecidas do usuário:
+${pastMemories.join("\n") || "Nenhuma ainda."}
 
-Mensagem:
+Mensagem atual:
 "${text}"
 
-Intenção detectada: ${intent}
-
-Responda de forma adequada:
+Responda de forma personalizada:
 `;
 
   const reply = await runLLM(prompt);

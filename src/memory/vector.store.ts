@@ -1,19 +1,20 @@
-export type VectorRecord = {
-  id: string;
-  vector: number[];
-  payload?: Record<string, unknown>;
-};
+import { qdrant } from "../infra/qdrant";
+import { randomUUID } from "crypto";
 
-class VectorStore {
-  private readonly byId = new Map<string, VectorRecord>();
-
-  upsert(record: VectorRecord) {
-    this.byId.set(record.id, record);
-  }
-
-  get(id: string) {
-    return this.byId.get(id) ?? null;
+export async function saveMemories(userId: string, memories: string[]) {
+  for (const memory of memories) {
+    await qdrant.upsert("memory", {
+      points: [
+        {
+          id: randomUUID(),
+          payload: {
+            userId,
+            text: memory,
+            createdAt: Date.now(),
+          },
+          vector: [], // embedding será automático depois
+        },
+      ],
+    });
   }
 }
-
-export const vectorStore = new VectorStore();
