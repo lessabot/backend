@@ -3,6 +3,7 @@ import { saveProfile } from "../memory/profile.store";
 import { saveMemories } from "../memory/vector.store";
 import { sendTelegramMessage } from "./send";
 import { executeTool } from "../tools/tool.executor";
+import { logBrainTrace } from "../observability/brain.logger";
 
 import {
   setPendingAction,
@@ -58,7 +59,11 @@ export async function handleIncomingMessage(msg: any) {
   /* ===========================
      🧠 2️⃣ BRAIN (LLM ÚNICO)
   ============================ */
+  const start = Date.now();
+
   const brain = await runBrain(text);
+
+  const tookMs = Date.now() - start;
 
   /* ===========================
      💾 3️⃣ MEMÓRIA / PERFIL
@@ -75,6 +80,16 @@ export async function handleIncomingMessage(msg: any) {
      🛠️ 4️⃣ TOOL AGENT
   ============================ */
   if (brain.tool?.name) {
+    logBrainTrace({
+      userId,
+      message: text,
+      brainOutput: brain,
+      tookMs,
+      usedTool: brain.tool?.name ?? null,
+      requiresConfirmation: true,
+      createdAt: new Date().toISOString(),
+    });
+
     if (brain.tool.requiresConfirmation) {
       setPendingAction(userId, {
         toolName: brain.tool.name,
@@ -98,6 +113,15 @@ export async function handleIncomingMessage(msg: any) {
      💬 5️⃣ RESPOSTA NORMAL
   ============================ */
   if (brain.reply) {
+    logBrainTrace({
+      userId,
+      message: text,
+      brainOutput: brain,
+      tookMs,
+      usedTool: null,
+      requiresConfirmation: false,
+      createdAt: new Date().toISOString(),
+    });
     await sendTelegramMessage(chatId, brain.reply);
   }
 }
