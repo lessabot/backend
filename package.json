@@ -4,7 +4,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node src/server.ts",
-    "build": "tsc"
+    "build": "node ./node_modules/typescript/bin/tsc"
   },
   "keywords": [],
   "author": "",
