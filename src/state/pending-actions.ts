@@ -1,6 +1,8 @@
 type PendingAction = {
   toolName: string;
   args: any;
+  originalUserMessage: string;
+  createdAt: number;
 };
 
 const pendingActions = new Map<string, PendingAction>();

@@ -12,6 +12,7 @@ import {
 } from "../state/pending-actions";
 
 import { isConfirmation, isRejection } from "../utils/is-confirmation";
+import { judgeConfirmation } from "../agents/confirmation.agent";
 
 // Deduplicação simples (RAM)
 const processedMessages = new Set<string>();
@@ -34,26 +35,28 @@ export async function handleIncomingMessage(msg: any) {
   const pending = getPendingAction(userId);
 
   if (pending) {
-    if (isConfirmation(text)) {
-      const result = await executeTool(pending.toolName, pending.args);
+    const judgment = await judgeConfirmation({
+      pendingMessage: pending.originalUserMessage,
+      userMessage: text,
+    });
 
+    if (judgment.decision === "confirm") {
+      const result = await executeTool(pending.toolName, pending.args);
       clearPendingAction(userId);
       await sendTelegramMessage(chatId, result.message);
       return;
     }
 
-    if (isRejection(text)) {
+    if (judgment.decision === "reject") {
       clearPendingAction(userId);
       await sendTelegramMessage(chatId, "Beleza 🙂 não fiz nada.");
       return;
     }
 
-    // usuário falou outra coisa → mantém pending
-    await sendTelegramMessage(
-      chatId,
-      "Só pra confirmar 🙂 posso fazer aquilo?",
-    );
-    return;
+    if (judgment.decision === "cancel" || judgment.decision === "unrelated") {
+      clearPendingAction(userId);
+      // segue fluxo normal (brain)
+    }
   }
 
   /* ===========================
@@ -93,7 +96,9 @@ export async function handleIncomingMessage(msg: any) {
     if (brain.tool.requiresConfirmation) {
       setPendingAction(userId, {
         toolName: brain.tool.name,
+        originalUserMessage: text,
         args: brain.tool.arguments ?? {},
+        createdAt: Date.now(),
       });
 
       await sendTelegramMessage(chatId, "Posso fazer isso pra você?");
