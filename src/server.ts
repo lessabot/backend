@@ -4,15 +4,15 @@ import { qdrant } from "./infra/qdrant";
 
 const server = Fastify({ logger: true });
 
-async function ensureCollection() {
-  try {
-    await qdrant.getCollection("memory");
-  } catch {
-    await qdrant.createCollection("memory", {
-      vectors: { size: 768, distance: "Cosine" },
-    });
-  }
-}
+// async function ensureCollection() {
+//   try {
+//     await qdrant.getCollection("memory");
+//   } catch {
+//     await qdrant.createCollection("memory", {
+//       vectors: { size: 768, distance: "Cosine" },
+//     });
+//   }
+// }
 
 buildApp(server);
 
@@ -22,5 +22,6 @@ server
     host: "0.0.0.0",
   })
   .then(async () => {
-    await ensureCollection();
+    // await ensureCollection();
+    console.log("Server is running");
   });
