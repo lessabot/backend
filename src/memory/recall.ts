@@ -6,7 +6,8 @@ export async function recallMemories(userId: string, query: string) {
 
   const res = await qdrant.search("memory", {
     vector,
-    limit: 5,
+    limit: 10,
+    score_threshold: 0.25,
     filter: {
       must: [
         {
@@ -17,5 +18,5 @@ export async function recallMemories(userId: string, query: string) {
     },
   });
 
-  return res.map((r) => r.payload?.text);
+  return res.map((r) => ({ text: r.payload?.text, score: r.score }));
 }
