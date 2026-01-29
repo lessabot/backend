@@ -1,4 +1,6 @@
 import { runBrain } from "../agents/brain.agent";
+import { judgeConfirmation } from "../agents/confirmation.agent";
+
 import { saveProfile } from "../memory/profile.store";
 import { saveMemories } from "../memory/vector.store";
 import { sendTelegramMessage } from "./send";
@@ -11,8 +13,11 @@ import {
   clearPendingAction,
 } from "../state/pending-actions";
 
-import { isConfirmation, isRejection } from "../utils/is-confirmation";
-import { judgeConfirmation } from "../agents/confirmation.agent";
+import {
+  getPersonality,
+  savePersonality,
+} from "../personality/personality.store";
+import { updatePersonality } from "../personality/personality.updater";
 
 // Deduplicação simples (RAM)
 const processedMessages = new Set<string>();
@@ -30,7 +35,7 @@ export async function handleIncomingMessage(msg: any) {
   setTimeout(() => processedMessages.delete(dedupKey), 60_000);
 
   /* ===========================
-     🟡 1️⃣ CONFIRMAÇÃO PENDENTE?
+     🟡 1️⃣ CONFIRMAÇÃO PENDENTE
   ============================ */
   const pending = getPendingAction(userId);
 
@@ -55,7 +60,7 @@ export async function handleIncomingMessage(msg: any) {
 
     if (judgment.decision === "cancel" || judgment.decision === "unrelated") {
       clearPendingAction(userId);
-      // segue fluxo normal (brain)
+      // segue fluxo normal
     }
   }
 
@@ -63,9 +68,7 @@ export async function handleIncomingMessage(msg: any) {
      🧠 2️⃣ BRAIN (LLM ÚNICO)
   ============================ */
   const start = Date.now();
-
-  const brain = await runBrain(text);
-
+  const brain = await runBrain(userId, text);
   const tookMs = Date.now() - start;
 
   /* ===========================
@@ -80,7 +83,14 @@ export async function handleIncomingMessage(msg: any) {
   }
 
   /* ===========================
-     🛠️ 4️⃣ TOOL AGENT
+     🧠 4️⃣ PERSONALIDADE
+  ============================ */
+  const currentPersonality = getPersonality(userId);
+  const updatedPersonality = updatePersonality(currentPersonality, text);
+  savePersonality(userId, updatedPersonality);
+
+  /* ===========================
+     🛠️ 5️⃣ TOOL AGENT
   ============================ */
   if (brain.tool?.name) {
     logBrainTrace({
@@ -88,8 +98,8 @@ export async function handleIncomingMessage(msg: any) {
       message: text,
       brainOutput: brain,
       tookMs,
-      usedTool: brain.tool?.name ?? null,
-      requiresConfirmation: true,
+      usedTool: brain.tool.name,
+      requiresConfirmation: brain.tool.requiresConfirmation,
       createdAt: new Date().toISOString(),
     });
 
@@ -115,18 +125,19 @@ export async function handleIncomingMessage(msg: any) {
   }
 
   /* ===========================
-     💬 5️⃣ RESPOSTA NORMAL
+     💬 6️⃣ RESPOSTA NORMAL
   ============================ */
+  logBrainTrace({
+    userId,
+    message: text,
+    brainOutput: brain,
+    tookMs,
+    usedTool: null,
+    requiresConfirmation: false,
+    createdAt: new Date().toISOString(),
+  });
+
   if (brain.reply) {
-    logBrainTrace({
-      userId,
-      message: text,
-      brainOutput: brain,
-      tookMs,
-      usedTool: null,
-      requiresConfirmation: false,
-      createdAt: new Date().toISOString(),
-    });
     await sendTelegramMessage(chatId, brain.reply);
   }
 }
