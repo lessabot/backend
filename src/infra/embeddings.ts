@@ -3,10 +3,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const embeddingModel = genAI.getGenerativeModel({
-  model: "gemini-embedding-001",
+  model: "text-embedding-004",
 });
 
 export async function embed(text: string): Promise<number[]> {
   const result = await embeddingModel.embedContent(text);
-  return result.embedding.values;
+  return result.embedding.values; // 🔥 isso é 768
 }
