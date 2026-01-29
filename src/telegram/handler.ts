@@ -1,4 +1,6 @@
 import { classifyIntent } from "../agents/router.agent";
+import { runLLM } from "../agents/llm.agent";
+import { SYSTEM_PROMPT } from "../agents/system.prompt";
 
 export async function handleIncomingMessage(msg: any) {
   const userId = String(msg.from.id);
@@ -6,7 +8,20 @@ export async function handleIncomingMessage(msg: any) {
 
   const intent = classifyIntent(text);
 
-  console.log({ userId, text, intent });
+  const prompt = `
+${SYSTEM_PROMPT}
 
-  // Próximo passo: memória + resposta
+Usuário disse:
+"${text}"
+
+Intenção detectada: ${intent}
+
+Responda de forma adequada:
+`;
+
+  const reply = await runLLM(prompt);
+
+  console.log("Resposta Gemini:", reply);
+
+  // próximo passo: enviar ao Telegram
 }
