@@ -1,8 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { handleIncomingMessage } from "../telegram/handler";
 
-export default async function (app: FastifyInstance) {
-  app.post("/telegram", async (req, res) => {
+export default async function telegramWebhook(app: FastifyInstance) {
+  app.post("/telegram", async (req, reply) => {
     const update = req.body as any;
 
     if (update.message) {
