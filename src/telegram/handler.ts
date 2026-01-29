@@ -1,15 +1,16 @@
-import { extractMemory } from "../agents/memory.extractor";
-
-import { planNextAction } from "../agents/planner.agent";
-import { runLLM } from "../agents/llm.agent";
-import { SYSTEM_PROMPT } from "../agents/system.prompt";
-
+import { runBrain } from "../agents/brain.agent";
 import { saveProfile } from "../memory/profile.store";
 import { saveMemories } from "../memory/vector.store";
-import { recallMemories } from "../memory/recall";
-
 import { sendTelegramMessage } from "./send";
-import { shouldStoreMemory } from "../agents/memory.judge.prompt";
+import { executeTool } from "../tools/tool.executor";
+
+import {
+  setPendingAction,
+  getPendingAction,
+  clearPendingAction,
+} from "../state/pending-actions";
+
+import { isConfirmation, isRejection } from "../utils/is-confirmation";
 
 // Deduplicação simples (RAM)
 const processedMessages = new Set<string>();
@@ -26,97 +27,77 @@ export async function handleIncomingMessage(msg: any) {
   processedMessages.add(dedupKey);
   setTimeout(() => processedMessages.delete(dedupKey), 60_000);
 
-  const extracted = await extractMemory(text);
+  /* ===========================
+     🟡 1️⃣ CONFIRMAÇÃO PENDENTE?
+  ============================ */
+  const pending = getPendingAction(userId);
 
-  if (extracted.profile) {
-    await saveProfile(userId, extracted.profile);
-  }
+  if (pending) {
+    if (isConfirmation(text)) {
+      const result = await executeTool(pending.toolName, pending.args);
 
-  if (await shouldStoreMemory(text)) {
-    const memoriesToSave = [
-      ...(extracted.preferences ?? []),
-      ...(extracted.facts ?? []),
-    ];
-
-    if (memoriesToSave.length) {
-      await saveMemories(userId, memoriesToSave);
-    }
-  }
-
-  const memories = await recallMemories(userId, text);
-
-  const relevantMemories = memories.filter((m) => m.score >= 0.35).slice(0, 5);
-
-  const memoryContext = relevantMemories.map((m) => `- ${m.text}`).join("\n");
-
-  const plan = await planNextAction(
-    text,
-    relevantMemories.map((m) => m.text),
-  );
-
-  let reply: string | null = null;
-
-  switch (plan.action) {
-    case "ask_question": {
-      reply = await runLLM(`
-${SYSTEM_PROMPT}
-
-Contexto:
-O usuário enviou uma mensagem curta ou inicial.
-
-Mensagem:
-"${text}"
-
-Faça UMA pergunta natural, curta e amigável para avançar a conversa.
-`);
-      break;
-    }
-
-    case "use_memory": {
-      reply = await runLLM(`
-${SYSTEM_PROMPT}
-
-Memórias relevantes do usuário:
-${memoryContext || "Nenhuma relevante."}
-
-Mensagem atual:
-"${text}"
-
-Responda de forma personalizada, usando as memórias se fizer sentido.
-`);
-      break;
-    }
-
-    case "store_memory": {
-      reply = await runLLM(`
-${SYSTEM_PROMPT}
-
-Mensagem:
-"${text}"
-
-Responda normalmente, de forma natural.
-`);
-      break;
-    }
-
-    case "do_nothing":
+      clearPendingAction(userId);
+      await sendTelegramMessage(chatId, result.message);
       return;
-
-    case "chat":
-    default: {
-      reply = await runLLM(`
-${SYSTEM_PROMPT}
-
-Mensagem:
-"${text}"
-
-Responda de forma natural e amigável.
-`);
-      break;
     }
+
+    if (isRejection(text)) {
+      clearPendingAction(userId);
+      await sendTelegramMessage(chatId, "Beleza 🙂 não fiz nada.");
+      return;
+    }
+
+    // usuário falou outra coisa → mantém pending
+    await sendTelegramMessage(
+      chatId,
+      "Só pra confirmar 🙂 posso fazer aquilo?",
+    );
+    return;
   }
 
-  if (reply) {
-    await sendTelegramMessage(chatId, reply);
+  /* ===========================
+     🧠 2️⃣ BRAIN (LLM ÚNICO)
+  ============================ */
+  const brain = await runBrain(text);
+
+  /* ===========================
+     💾 3️⃣ MEMÓRIA / PERFIL
+  ============================ */
+  if (brain.profile && Object.keys(brain.profile).length > 0) {
+    await saveProfile(userId, brain.profile);
+  }
+
+  if (brain.storeMemory && brain.memories?.length) {
+    await saveMemories(userId, brain.memories);
+  }
+
+  /* ===========================
+     🛠️ 4️⃣ TOOL AGENT
+  ============================ */
+  if (brain.tool?.name) {
+    if (brain.tool.requiresConfirmation) {
+      setPendingAction(userId, {
+        toolName: brain.tool.name,
+        args: brain.tool.arguments ?? {},
+      });
+
+      await sendTelegramMessage(chatId, "Posso fazer isso pra você?");
+      return;
+    }
+
+    const result = await executeTool(
+      brain.tool.name,
+      brain.tool.arguments ?? {},
+    );
+
+    await sendTelegramMessage(chatId, result.message);
+    return;
+  }
+
+  /* ===========================
+     💬 5️⃣ RESPOSTA NORMAL
+  ============================ */
+  if (brain.reply) {
+    await sendTelegramMessage(chatId, brain.reply);
   }
 }
