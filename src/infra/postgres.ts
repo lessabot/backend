@@ -1,9 +1,5 @@
-export type PostgresConfig = {
-  url: string;
-};
+import pg from "pg";
 
-export function getPostgresConfig(): PostgresConfig {
-  const url = process.env.POSTGRES_URL;
-  if (!url) throw new Error("POSTGRES_URL is required");
-  return { url };
-}
+export const db = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+});

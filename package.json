@@ -11,11 +11,15 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@qdrant/js-client-rest": "^1.16.2",
     "dotenv": "^17.2.3",
-    "fastify": "^5.7.2"
+    "fastify": "^5.7.2",
+    "pg": "^8.17.2"
   },
   "devDependencies": {
     "@types/node": "^25.1.0",
+    "@types/pg": "^8.16.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
     "typescript": "^5.9.3"
