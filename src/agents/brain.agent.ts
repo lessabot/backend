@@ -1,4 +1,5 @@
 import { runLLM } from "./llm.agent";
+import { extractJson } from "../utils/safe-json";
 import { BRAIN_PROMPT } from "./brain.prompt";
 
 export async function runBrain(text: string) {
@@ -9,5 +10,5 @@ Mensagem do usuário:
 "${text}"
 `);
 
-  return JSON.parse(raw);
+  return extractJson(raw);
 }
