@@ -23,14 +23,14 @@ server
   })
   .then(async () => {
     // await ensureCollection();
-    await qdrant.deleteCollection("memory");
+    // await qdrant.deleteCollection("memory");
 
-    await qdrant.createCollection("memory", {
-      vectors: {
-        size: 768,
-        distance: "Cosine",
-      },
-    });
+    // await qdrant.createCollection("memory", {
+    //   vectors: {
+    //     size: 768,
+    //     distance: "Cosine",
+    //   },
+    // });
 
     console.log("Server is running");
   });
