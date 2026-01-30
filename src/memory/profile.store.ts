@@ -1,17 +1,21 @@
 import { db } from "../infra/postgres";
 
-export async function saveProfile(userId: string, profile: any) {
-  for (const [key, value] of Object.entries(profile)) {
-    if (!value) continue;
-
+export async function saveProfile(
+  userId: string,
+  profile: Record<string, { value: string; confidence?: number }>,
+) {
+  for (const [key, entry] of Object.entries(profile)) {
     await db.query(
       `
-      INSERT INTO user_profile (user_id, key, value)
-      VALUES ($1, $2, $3)
+      INSERT INTO user_profile (user_id, key, value, confidence)
+      VALUES ($1, $2, $3, $4)
       ON CONFLICT (user_id, key)
-      DO UPDATE SET value = EXCLUDED.value, updated_at = now()
+      DO UPDATE SET
+        value = EXCLUDED.value,
+        confidence = EXCLUDED.confidence,
+        updated_at = NOW()
       `,
-      [userId, key, String(value)],
+      [userId, key, entry.value, entry.confidence ?? 1],
     );
   }
 }
