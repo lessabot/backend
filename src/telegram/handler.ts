@@ -34,9 +34,6 @@ export async function handleIncomingMessage(msg: any) {
   processedMessages.add(dedupKey);
   setTimeout(() => processedMessages.delete(dedupKey), 60_000);
 
-  /* ===========================
-     🟡 1️⃣ CONFIRMAÇÃO PENDENTE
-  ============================ */
   const pending = getPendingAction(userId);
 
   if (pending) {
@@ -60,7 +57,6 @@ export async function handleIncomingMessage(msg: any) {
 
     if (judgment.decision === "cancel" || judgment.decision === "unrelated") {
       clearPendingAction(userId);
-      // segue fluxo normal
     }
   }
 
