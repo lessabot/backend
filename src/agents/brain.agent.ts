@@ -20,6 +20,8 @@ export async function runBrain(userId: string, text: string) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const raw = await runLLM(`
+        
+
 ${BRAIN_PROMPT}
 
 Mensagem do usuário:

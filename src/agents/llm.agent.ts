@@ -1,3 +1,5 @@
+import { SYSTEM_PROMPT } from "./system.prompt";
+
 export async function runLLM(prompt: string): Promise<string> {
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -10,6 +12,10 @@ export async function runLLM(prompt: string): Promise<string> {
     body: JSON.stringify({
       model: process.env.OPENROUTER_MODEL,
       messages: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT,
+        },
         {
           role: "user",
           content: prompt,
