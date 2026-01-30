@@ -3,6 +3,7 @@ type PendingAction = {
   args: any;
   originalUserMessage: string;
   createdAt: number;
+  explanation: string;
 };
 
 const pendingActions = new Map<string, PendingAction>();

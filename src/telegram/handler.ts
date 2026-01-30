@@ -6,8 +6,6 @@ import { saveMemories } from "../memory/vector.store";
 import { sendTelegramMessage } from "./send";
 import { executeTool } from "../tools/tool.executor";
 import { logBrainTrace } from "../observability/brain.logger";
-
-import { detectMood } from "../mood/mood.detector";
 import { setMood, getMood } from "../mood/mood.store";
 import { analyzeMood } from "../agents/mood.agent";
 import { shouldAnalyzeMood } from "../mood/mood.gate";
@@ -36,16 +34,12 @@ export async function handleIncomingMessage(msg: any) {
 
   if (!text.trim()) return;
 
-  addTurn(userId, {
-    role: "user",
-    text: text.trim(),
-    timestamp: Date.now(),
-  });
-
   const dedupKey = `${msg.message_id}-${userId}`;
   if (processedMessages.has(dedupKey)) return;
   processedMessages.add(dedupKey);
   setTimeout(() => processedMessages.delete(dedupKey), 60_000);
+
+  addTurn(userId, { role: "user", text, ts: Date.now() });
 
   const pending = getPendingAction(userId);
 
@@ -126,6 +120,7 @@ export async function handleIncomingMessage(msg: any) {
       setPendingAction(userId, {
         toolName: brain.tool.name,
         originalUserMessage: text,
+        explanation: brain.reply ?? "aquilo que comentei",
         args: brain.tool.arguments ?? {},
         createdAt: Date.now(),
       });
@@ -157,11 +152,7 @@ export async function handleIncomingMessage(msg: any) {
   });
 
   if (brain.reply) {
-    addTurn(userId, {
-      role: "assistant",
-      text: brain.reply,
-      timestamp: Date.now(),
-    });
+    addTurn(userId, { role: "assistant", text: brain.reply, ts: Date.now() });
 
     await sendTelegramMessage(chatId, brain.reply);
   }
