@@ -3,6 +3,7 @@ import { BRAIN_PROMPT } from "./brain.prompt";
 import { extractJson } from "../utils/safe-json";
 import { getPersonality } from "../personality/personality.store";
 import { getMemorySummary } from "../memory/summary.store";
+import { getRecentTurns } from "../memory/rolling.store";
 
 async function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -10,6 +11,7 @@ async function sleep(ms: number) {
 
 export async function runBrain(userId: string, text: string) {
   const personality = getPersonality(userId);
+  const recent = getRecentTurns(userId);
 
   let lastError: any;
 
@@ -20,6 +22,16 @@ ${BRAIN_PROMPT}
 
 Mensagem do usuário:
 "${text}"
+
+Últimas mensagens da conversa (para continuidade):
+Use esse histórico APENAS para manter continuidade.
+Não trate isso como memória permanente.
+${
+  recent
+    .map((t) => `${t.role === "user" ? "Usuário" : "Lessa"}: ${t.text}`)
+    .join("\n") || "Nenhuma"
+}
+
 
 Resumo persistente do usuário:
 ${getMemorySummary(userId) ?? "Ainda não disponível"}

@@ -18,6 +18,7 @@ import {
   savePersonality,
 } from "../personality/personality.store";
 import { updatePersonality } from "../personality/personality.updater";
+import { addTurn } from "../memory/rolling.store";
 
 // Deduplicação simples (RAM)
 const processedMessages = new Set<string>();
@@ -28,6 +29,12 @@ export async function handleIncomingMessage(msg: any) {
   const text: string = msg.text ?? "";
 
   if (!text.trim()) return;
+
+  addTurn(userId, {
+    role: "user",
+    text: text.trim(),
+    timestamp: Date.now(),
+  });
 
   const dedupKey = `${msg.message_id}-${userId}`;
   if (processedMessages.has(dedupKey)) return;
@@ -134,6 +141,12 @@ export async function handleIncomingMessage(msg: any) {
   });
 
   if (brain.reply) {
+    addTurn(userId, {
+      role: "assistant",
+      text: brain.reply,
+      timestamp: Date.now(),
+    });
+
     await sendTelegramMessage(chatId, brain.reply);
   }
 }
