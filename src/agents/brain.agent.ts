@@ -4,6 +4,7 @@ import { extractJson } from "../utils/safe-json";
 import { getPersonality } from "../personality/personality.store";
 import { getMemorySummary } from "../memory/summary.store";
 import { getRecentTurns } from "../memory/rolling.store";
+import { getMood } from "../mood/mood.store";
 
 async function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -12,6 +13,7 @@ async function sleep(ms: number) {
 export async function runBrain(userId: string, text: string) {
   const personality = getPersonality(userId);
   const recent = getRecentTurns(userId);
+  const mood = getMood(userId);
 
   let lastError: any;
 
@@ -42,6 +44,16 @@ Estilo de conversa da Lessa com este usuário:
 - Verbosidade: ${personality.verbosity}
 - Curiosidade: ${personality.curiosity}
 - Intimidade: ${personality.intimacy}
+
+
+Estado emocional atual do usuário: ${mood}
+Regras:
+- Se mood = sad → seja empático, calmo, não brincalhão
+- Se mood = irritated → seja direto, sem ironia
+- Se mood = playful → pode usar humor leve
+- Se mood = stressed → respostas curtas e tranquilizadoras
+- Se mood = positive → pode ser mais expansivo
+
 
 Instruções:
 - Ajuste o tom de resposta com base nesses valores

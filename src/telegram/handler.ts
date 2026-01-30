@@ -7,6 +7,12 @@ import { sendTelegramMessage } from "./send";
 import { executeTool } from "../tools/tool.executor";
 import { logBrainTrace } from "../observability/brain.logger";
 
+import { detectMood } from "../mood/mood.detector";
+import { setMood, getMood } from "../mood/mood.store";
+import { analyzeMood } from "../agents/mood.agent";
+import { shouldAnalyzeMood } from "../mood/mood.gate";
+import { getRecentTurns } from "../memory/rolling.store";
+
 import {
   setPendingAction,
   getPendingAction,
@@ -65,6 +71,16 @@ export async function handleIncomingMessage(msg: any) {
     if (judgment.decision === "cancel" || judgment.decision === "unrelated") {
       clearPendingAction(userId);
     }
+  }
+
+  let mood = getMood(userId);
+
+  if (shouldAnalyzeMood(text)) {
+    mood = await analyzeMood({
+      message: text,
+      recentContext: getRecentTurns(userId).map((t) => t.text),
+    });
+    setMood(userId, mood);
   }
 
   /* ===========================
