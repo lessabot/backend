@@ -17,3 +17,7 @@ export function addTurn(userId: string, turn: Turn) {
 export function getRecentTurns(userId: string): Turn[] {
   return memory.get(userId) ?? [];
 }
+
+export function clearRecentTurns(userId: string) {
+  memory.delete(userId);
+}

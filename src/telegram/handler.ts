@@ -9,7 +9,10 @@ import { logBrainTrace } from "../observability/brain.logger";
 import { setMood, getMood } from "../mood/mood.store";
 import { analyzeMood } from "../agents/mood.agent";
 import { shouldAnalyzeMood } from "../mood/mood.gate";
-import { getRecentTurns } from "../memory/rolling.store";
+import { clearRecentTurns, getRecentTurns } from "../memory/rolling.store";
+
+import { summarizeConversation } from "../agents/conversation.summarizer.agent";
+import { shouldSummarize } from "../memory/summarize.gate";
 
 import {
   setPendingAction,
@@ -75,6 +78,26 @@ export async function handleIncomingMessage(msg: any) {
       recentContext: getRecentTurns(userId).map((t) => t.text),
     });
     setMood(userId, mood);
+  }
+
+  const recentTurns = getRecentTurns(userId);
+
+  if (shouldSummarize(recentTurns.length)) {
+    const summary = await summarizeConversation({
+      userId,
+      turns: recentTurns,
+    });
+
+    if (summary.memories?.length) {
+      await saveMemories(userId, summary.memories);
+    }
+
+    // opcional: atualizar mood geral
+    if (summary.emotional_state) {
+      setMood(userId, summary.emotional_state);
+    }
+
+    clearRecentTurns(userId);
   }
 
   /* ===========================
