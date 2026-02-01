@@ -7,14 +7,14 @@ export async function saveProfile(
   for (const [key, entry] of Object.entries(profile)) {
     await db.query(
       `
-      INSERT INTO user_profile (user_id, key, value, confidence)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (user_id, key)
-      DO UPDATE SET
-        value = EXCLUDED.value,
-        confidence = EXCLUDED.confidence,
-        updated_at = NOW()
-      `,
+  INSERT INTO public.user_profile (user_id, key, value, confidence)
+  VALUES ($1, $2, $3, $4)
+  ON CONFLICT (user_id, key)
+  DO UPDATE SET
+    value = EXCLUDED.value,
+    confidence = EXCLUDED.confidence,
+    updated_at = NOW()
+  `,
       [userId, key, entry.value, entry.confidence ?? 1],
     );
   }
